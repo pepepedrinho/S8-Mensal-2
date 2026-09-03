@@ -1,0 +1,32 @@
+﻿steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'southamerica-east1-docker.pkg.dev/$PROJECT_ID/triodelicia/$_SERVICE:$COMMIT_SHA'
+      - './backend'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'southamerica-east1-docker.pkg.dev/$PROJECT_ID/triodelicia/$_SERVICE:$COMMIT_SHA'
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - '$_SERVICE'
+      - '--image=southamerica-east1-docker.pkg.dev/$PROJECT_ID/triodelicia/$_SERVICE:$COMMIT_SHA'
+      - '--region=$_REGION'
+      - '--platform=managed'
+      - '--port=5000'
+      - '--ingress=internal-and-cloud-load-balancing'
+      - '--allow-unauthenticated'
+      - '--min=0'
+      - '--max=3'
+      - '--service-account=$_RUNTIME_SERVICE_ACCOUNT'
+      - '--set-env-vars=FIRESTORE_DB_UID=$_DB_UID,FIRESTORE_DB_LOCATION=$_DB_LOCATION,FIRESTORE_DB_ID=$_DB_ID'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
