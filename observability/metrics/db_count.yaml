@@ -1,0 +1,18 @@
+name: triodelicia_db_operation_count
+description: Contagem de operacoes de banco observadas pelo backend (por operacao e sucesso).
+filter: >-
+  resource.type="cloud_run_revision"
+  AND resource.labels.service_name="triodelicia-backend"
+  AND jsonPayload.event="db_operation"
+metricDescriptor:
+  metricKind: DELTA
+  valueType: INT64
+  unit: "1"
+  labels:
+    - key: operation
+      valueType: STRING
+    - key: success
+      valueType: STRING
+labelExtractors:
+  operation: EXTRACT(jsonPayload.operation)
+  success: EXTRACT(jsonPayload.success)

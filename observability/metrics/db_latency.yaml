@@ -1,0 +1,19 @@
+name: triodelicia_db_operation_latency_ms
+description: Distribuicao da duracao (ms) das operacoes de banco, por operacao.
+filter: >-
+  resource.type="cloud_run_revision"
+  AND resource.labels.service_name="triodelicia-backend"
+  AND jsonPayload.event="db_operation"
+valueExtractor: EXTRACT(jsonPayload.duration_ms)
+metricDescriptor:
+  metricKind: DELTA
+  valueType: DISTRIBUTION
+  unit: ms
+  labels:
+    - key: operation
+      valueType: STRING
+labelExtractors:
+  operation: EXTRACT(jsonPayload.operation)
+bucketOptions:
+  explicitBuckets:
+    bounds: [5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000]

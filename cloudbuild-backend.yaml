@@ -26,7 +26,7 @@
       - '--min=0'
       - '--max=3'
       - '--service-account=$_RUNTIME_SERVICE_ACCOUNT'
-      - '--set-env-vars=FIRESTORE_DB_UID=$_DB_UID,FIRESTORE_DB_LOCATION=$_DB_LOCATION,FIRESTORE_DB_ID=$_DB_ID'
+      - '--set-env-vars=FIRESTORE_DB_UID=$_DB_UID,FIRESTORE_DB_LOCATION=$_DB_LOCATION,FIRESTORE_DB_ID=$_DB_ID,GOOGLE_CLOUD_PROJECT=$PROJECT_ID'
 
 options:
   logging: CLOUD_LOGGING_ONLY

@@ -1,0 +1,68 @@
+%% Triodelícia — Diagrama técnico e de observabilidade
+%% Fonte editável (Mermaid). Renderiza no GitHub, em https://mermaid.live
+%% e pode ser importado no draw.io (Arrange > Insert > Advanced > Mermaid).
+%% Legenda de fluxos:
+%%   linha cheia  = fluxo da aplicação
+%%   linha ...    = fluxo de observabilidade
+%%   linha vermelha "X" = acesso bloqueado
+
+flowchart TB
+    user([Navegador do usuário])
+    dns[/"DNS: triodelicia.duckdns.org<br/>(DuckDNS) → IP global do LB"/]
+
+    subgraph APP["Fluxo da aplicação"]
+        direction TB
+        lb["Global External HTTPS<br/>Application Load Balancer<br/>TLS termina aqui · :443<br/>URL map: / → frontend ; /api/* → backend"]
+        feA["frontend-sae1<br/>Cloud Run · southamerica-east1"]
+        feB["frontend-saw1<br/>Cloud Run · southamerica-west1"]
+        be["backend-sae1<br/>Cloud Run · southamerica-east1<br/>ingress: internal-and-cloud-load-balancing"]
+        db[("Firestore Enterprise<br/>MongoDB compatibility<br/>southamerica-east1")]
+    end
+
+    subgraph OBS["Fluxo de observabilidade"]
+        direction TB
+        logging["Cloud Logging<br/>(bucket _Default)"]
+        explorer["Logs Explorer"]
+        metrics["Log-based Metrics (6)<br/>request / error / latency /<br/>db_count / db_latency / usage"]
+        native["Métricas nativas<br/>Cloud Run / Load Balancer"]
+        uptime["Uptime Check HTTPS<br/>/api/todos"]
+        monitoring["Cloud Monitoring"]
+        dash["Dashboard — 6 painéis"]
+        alerts["Alertas"]
+    end
+
+    viewer([Consulta: usuário/grupo<br/>OBS_VIEWER_MEMBER])
+
+    %% ---- Fluxo da aplicação (linha cheia) ----
+    user -->|resolve nome| dns
+    user ==>|HTTPS :443| lb
+    lb ==> feA
+    lb ==> feB
+    lb ==>|/api/*| be
+    be ==>|Mongoose / OIDC| db
+
+    %% ---- Acesso bloqueado (vermelho) ----
+    user -. "X  run.app direto do backend<br/>bloqueado (só via LB)" .-x be
+
+    %% ---- Fluxo de observabilidade (pontilhado) ----
+    be -.->|stdout JSON estruturado| logging
+    logging -.-> explorer
+    logging -.-> metrics
+    metrics -.-> monitoring
+    native -.-> monitoring
+    uptime -.-> monitoring
+    monitoring -.-> dash
+    monitoring -.-> alerts
+    viewer -. "IAM: monitoring.viewer + logging.viewer" .-> dash
+    viewer -.-> explorer
+
+    %% ---- Estilos ----
+    classDef app fill:#e3f2fd,stroke:#1565c0,color:#0d47a1;
+    classDef obs fill:#f1f8e9,stroke:#558b2f,color:#33691e;
+    classDef ext fill:#fff,stroke:#616161,color:#212121;
+    class lb,feA,feB,be,db app;
+    class logging,explorer,metrics,native,uptime,monitoring,dash,alerts obs;
+    class user,dns,viewer ext;
+
+    %% índice 6 = seta de acesso bloqueado (user -.x be)
+    linkStyle 6 stroke:#c62828,stroke-width:2px;

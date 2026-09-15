@@ -1,0 +1,19 @@
+name: triodelicia_request_latency_ms
+description: Distribuicao da duracao (ms) das requisicoes HTTP do backend, por rota.
+filter: >-
+  resource.type="cloud_run_revision"
+  AND resource.labels.service_name="triodelicia-backend"
+  AND jsonPayload.event="http_request"
+valueExtractor: EXTRACT(jsonPayload.duration_ms)
+metricDescriptor:
+  metricKind: DELTA
+  valueType: DISTRIBUTION
+  unit: ms
+  labels:
+    - key: route
+      valueType: STRING
+labelExtractors:
+  route: EXTRACT(jsonPayload.route)
+bucketOptions:
+  explicitBuckets:
+    bounds: [5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000]

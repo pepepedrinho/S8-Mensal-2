@@ -1,0 +1,16 @@
+name: triodelicia_error_count
+description: Contagem de requisicoes HTTP com status 5xx no backend.
+filter: >-
+  resource.type="cloud_run_revision"
+  AND resource.labels.service_name="triodelicia-backend"
+  AND jsonPayload.event="http_request"
+  AND jsonPayload.status_code>=500
+metricDescriptor:
+  metricKind: DELTA
+  valueType: INT64
+  unit: "1"
+  labels:
+    - key: route
+      valueType: STRING
+labelExtractors:
+  route: EXTRACT(jsonPayload.route)
