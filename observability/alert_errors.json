@@ -1,11 +1,11 @@
-{
+﻿{
   "displayName": "Triodelicia - Erros 5xx no backend",
   "combiner": "OR",
   "conditions": [
     {
       "displayName": "Erros 5xx > 0",
       "conditionThreshold": {
-        "filter": "metric.type=\"logging.googleapis.com/user/triodelicia_error_count\"",
+        "filter": "metric.type=\"logging.googleapis.com/user/triodelicia_error_count\" AND resource.type=\"cloud_run_revision\"",
         "comparison": "COMPARISON_GT",
         "thresholdValue": 0,
         "duration": "0s",
