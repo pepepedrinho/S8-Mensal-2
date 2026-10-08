@@ -81,6 +81,29 @@ function dbEvent(opts) {
   );
 }
 
+// Evento de Secret Manager / KMS (event = "secret_access" ou "kms_operation").
+// Só metadados: nunca valor do secret, plaintext ou ciphertext.
+// Falhas 4xx (negações esperadas na demo) saem como WARNING; 5xx como ERROR.
+function securityEvent(opts) {
+  const severity = opts.success ? "INFO" : opts.httpStatus >= 500 ? "ERROR" : "WARNING";
+  write(
+    base(
+      severity,
+      opts.event,
+      {
+        operation: opts.operation,
+        success: opts.success,
+        duration_ms: Math.round(opts.durationMs),
+        error_code: opts.errorCode || undefined,
+        secret_version: opts.secretVersion,
+        key_version: opts.keyVersion,
+        message: opts.event + " " + opts.operation + " " + (opts.success ? "ok" : "falhou"),
+      },
+      opts.req
+    )
+  );
+}
+
 // Evento de negócio (SEM conteúdo da tarefa).
 function usageEvent(opts) {
   write(
@@ -93,4 +116,4 @@ function logEvent(severity, event, message, extra) {
   write(base(severity, event, Object.assign({ message: message }, extra || {})));
 }
 
-module.exports = { httpLogger, dbEvent, usageEvent, logEvent };
+module.exports = { httpLogger, dbEvent, securityEvent, usageEvent, logEvent };

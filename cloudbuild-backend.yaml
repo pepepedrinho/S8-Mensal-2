@@ -26,7 +26,14 @@
       - '--min=0'
       - '--max=3'
       - '--service-account=$_RUNTIME_SERVICE_ACCOUNT'
-      - '--set-env-vars=FIRESTORE_DB_UID=$_DB_UID,FIRESTORE_DB_LOCATION=$_DB_LOCATION,FIRESTORE_DB_ID=$_DB_ID,GOOGLE_CLOUD_PROJECT=$PROJECT_ID'
+      - '--set-env-vars=FIRESTORE_DB_UID=$_DB_UID,FIRESTORE_DB_LOCATION=$_DB_LOCATION,FIRESTORE_DB_ID=$_DB_ID,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,SECURITY_DEMO_ENABLED=$_SECURITY_DEMO,SECRET_NAME=$_SECRET_NAME,KMS_KEY_NAME=$_KMS_KEY_NAME'
+
+# Padrões da demo do seminário (/api/security). O trigger (ou --substitutions) pode
+# sobrescrever; a demo só liga com _SECURITY_DEMO=true.
+substitutions:
+  _SECURITY_DEMO: 'false'
+  _SECRET_NAME: 'APP_API_KEY'
+  _KMS_KEY_NAME: 'projects/triodelicia-mensal2-2026/locations/southamerica-east1/keyRings/seminario-seguranca/cryptoKeys/seminario-chave'
 
 options:
   logging: CLOUD_LOGGING_ONLY

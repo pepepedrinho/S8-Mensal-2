@@ -58,6 +58,9 @@ por métricas.
 - `startup` / `startup_error` / `config_error` / `config_warning` / `request_error` — ciclo de
   vida, configuração (ex.: variáveis `FIRESTORE_*` ausentes, `MONGO_URI` em produção) e erros
   fora das rotas. Registram só nomes de variáveis e `error_type`, nunca valores.
+- `secret_access` / `kms_operation` / `security_demo_enabled` — rotas de demonstração do
+  seminário (`/api/security`, só com `SECURITY_DEMO_ENABLED=true`). Registram operação,
+  versão e `error_code`; negações (4xx) saem como `WARNING`, falhas 5xx como `ERROR`.
 
 ### Campos do log estruturado
 
