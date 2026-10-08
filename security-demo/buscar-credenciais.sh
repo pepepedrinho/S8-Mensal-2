@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Seminário Cloud IAM, Secret Manager e Cloud KMS — Triodelícia
+# Slide 7 — segredo fora do código: gera o "antes" e o "depois" da evidência 01.
+#
 # Busca credenciais escritas no código: árvore de trabalho + histórico do git.
 # Saída: Markdown em stdout. Todo valor literal sai mascarado (***); os valores
 # encontrados só são usados internamente (comparação por hash), nunca exibidos.
