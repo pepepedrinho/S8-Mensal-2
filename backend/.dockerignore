@@ -1,0 +1,19 @@
+# Segredos locais nunca entram na imagem. Sem exceção para .env.example:
+# a imagem não precisa dele (em produção a config vem do Cloud Run).
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Dependências e metadados (a imagem roda npm install)
+node_modules
+.git
+npm-debug.log*
+
+# Testes
+**/*.test.js
+**/*.spec.js
+test
+tests
+__tests__
+coverage

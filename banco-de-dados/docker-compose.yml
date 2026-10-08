@@ -9,6 +9,6 @@ services:
     volumes:
       - ./data:/data/db
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=root
-      - MONGO_INITDB_ROOT_PASSWORD=rootpassword
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME:?defina MONGO_ROOT_USERNAME no .env (veja .env.example)}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:?defina MONGO_ROOT_PASSWORD no .env (veja .env.example)}
       - MONGO_INITDB_DATABASE=todo-app

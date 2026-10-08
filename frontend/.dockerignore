@@ -1,0 +1,19 @@
+# Segredos locais nunca entram na imagem. Sem exceção para .env.example:
+# lembrete: no React, toda variável REACT_APP_* vai parar no bundle público.
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Dependências, build local e metadados (a imagem roda npm install e npm run build)
+node_modules
+build
+.git
+npm-debug.log*
+
+# Testes
+**/*.test.js
+**/*.spec.js
+src/setupTests.js
+__tests__
+coverage

@@ -4,9 +4,18 @@ Documentação objetiva da observabilidade implementada sobre a infraestrutura d
 entrega. Descreve as ferramentas, a coleta, as consultas, a fundamentação de **100% dos
 painéis**, os testes e as limitações.
 
-> **Segurança:** este repositório **não** contém credenciais, tokens, connection strings nem
-> dados pessoais. Os logs foram desenhados para nunca registrar o conteúdo das tarefas, e a
-> conexão com o banco não expõe a URI em mensagens de erro.
+> **Segurança:** até 08/10/2026, o repositório tinha uma senha de **desenvolvimento local**
+> (usuário root do MongoDB do `docker compose`) escrita em `backend/index.js` e nos dois
+> `docker-compose`. Ela foi removida do código nessa data, mas **continua no histórico do git**
+> (ver [`security-demo/evidencias/01-segredos-no-codigo.md`](security-demo/evidencias/01-segredos-no-codigo.md)).
+> **Nenhuma credencial do GCP** (chave de service account, token, API key) foi encontrada no
+> código nem no histórico: em produção, o backend autentica no Firestore via MONGODB-OIDC, sem
+> senha. Os logs não registram o conteúdo das tarefas, e as respostas de erro não expõem a URI
+> nem a mensagem interna do erro.
+>
+> **Execução local:** `cp .env.example .env`, gere a senha conforme as instruções no
+> [`.env.example`](.env.example) e rode `docker compose up --build`. O `.env` é ignorado
+> pelo git e pelo build das imagens.
 
 ---
 
@@ -41,11 +50,14 @@ Cloud Logging coloca cada JSON em `jsonPayload`, tornando os campos pesquisávei
 por métricas.
 
 ### Onde os registros são gerados
-`backend/logger.js` (o logger) e `backend/index.js` (que o usa nas rotas). Três tipos de evento:
+`backend/logger.js` (o logger) e `backend/index.js` (que o usa nas rotas). Tipos de evento:
 
 - `http_request` — uma linha por requisição concluída (middleware).
 - `db_operation` — uma linha por operação de banco observada pelo backend.
 - `todo_listed` / `todo_created` / `todo_completed` / `todo_deleted` — eventos de negócio.
+- `startup` / `startup_error` / `config_error` / `config_warning` / `request_error` — ciclo de
+  vida, configuração (ex.: variáveis `FIRESTORE_*` ausentes, `MONGO_URI` em produção) e erros
+  fora das rotas. Registram só nomes de variáveis e `error_type`, nunca valores.
 
 ### Campos do log estruturado
 
@@ -147,8 +159,8 @@ Depois o `http_request`, escrito pelo middleware quando a resposta é finalizada
 ```
 
 Detalhes do formato que valem registro: `severity` é derivada do status (`>= 500` → `ERROR`,
-`>= 400` → `WARNING`, senão `INFO`); `error_type` existe apenas em `db_operation` e é **omitido**
-do JSON quando a operação tem sucesso; `route` usa o padrão da rota (`/api/todos/:id`), não o ID
+`>= 400` → `WARNING`, senão `INFO`); `error_type` aparece em `db_operation` (e é **omitido**
+do JSON quando a operação tem sucesso), `startup_error` e `request_error`; `route` usa o padrão da rota (`/api/todos/:id`), não o ID
 concreto, o que permite agrupar sem expor dados; e o campo de trace só aparece quando a
 requisição chega com o cabeçalho `X-Cloud-Trace-Context` e a variável `GOOGLE_CLOUD_PROJECT`
 está definida.
@@ -410,4 +422,5 @@ observability/
 └── diagrama.png           # diagrama — versão legível (exportada)
 ```
 
-Os arquivos de roteiro pessoal (`COMANDOS_*.md`) e os `.env*` **não** ficam no repositório.
+Os arquivos de roteiro pessoal (`COMANDOS_*.md`) e os `.env` locais **não** ficam no
+repositório. Só o `.env.example`, com valores falsos, é versionado.

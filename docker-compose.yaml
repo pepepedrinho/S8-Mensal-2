@@ -20,6 +20,11 @@ services:
       - todo-net
     depends_on:
       - mongo  # Garante que o MongoDB esteja rodando antes de iniciar o backend
+    environment:
+      - OBS_ENVIRONMENT=local
+      # URI local montada a partir do .env (nenhuma senha escrita aqui).
+      # Em produção não existe MONGO_URI: o backend usa Firestore via OIDC.
+      - MONGO_URI=mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo-todo:27017/todo-app?authSource=admin
 
   mongo:
     build:
@@ -30,8 +35,8 @@ services:
     networks:
       - todo-net
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=root
-      - MONGO_INITDB_ROOT_PASSWORD=rootpassword
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME:?defina MONGO_ROOT_USERNAME no .env (veja .env.example)}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:?defina MONGO_ROOT_PASSWORD no .env (veja .env.example)}
       - MONGO_INITDB_DATABASE=todo-app
 
 
