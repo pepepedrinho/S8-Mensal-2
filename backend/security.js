@@ -122,6 +122,10 @@ function fingerprint(data) {
   return crypto.createHash("sha256").update(data).digest("hex").slice(0, 8);
 }
 
+function sha256Hex(data) {
+  return crypto.createHash("sha256").update(data).digest("hex");
+}
+
 function readConfig(env) {
   return {
     projectId: env.GOOGLE_CLOUD_PROJECT || "",
@@ -280,10 +284,12 @@ function createSecurityRouter(options) {
     })
   );
 
-  router.post(
+  router.get(
     "/kms/roundtrip",
     route(async (req, res) => {
       requireKmsConfig();
+      res.set("Cache-Control", "no-store");
+
       const encrypted = await observed(
         req,
         { event: "kms_operation", operation: "encrypt", fields: (r) => ({ keyVersion: r.keyVersion }) },
@@ -300,20 +306,30 @@ function createSecurityRouter(options) {
         () => decrypt(encrypted.ciphertext)
       );
 
+      const ciphertextHash = sha256Hex(encrypted.ciphertext);
+
       res.json({
         ok: true,
+        operation: "kms_roundtrip",
         keyVersion: encrypted.keyVersion,
         ciphertextLength: encrypted.ciphertext.length,
-        ciphertextPreview: encrypted.ciphertext.toString("base64").slice(0, 12) + "...",
+        ciphertextHash: {
+          algorithm: "SHA-256",
+          length: ciphertextHash.length,
+          value: ciphertextHash,
+        },
+        decryption: "accepted",
         roundtripMatch: plaintext.equals(DEMO_PLAINTEXT),
       });
     })
   );
 
-  router.post(
+  router.get(
     "/kms/tamper",
     route(async (req, res) => {
       requireKmsConfig();
+      res.set("Cache-Control", "no-store");
+
       const encrypted = await observed(
         req,
         { event: "kms_operation", operation: "encrypt", fields: (r) => ({ keyVersion: r.keyVersion }) },
@@ -325,6 +341,9 @@ function createSecurityRouter(options) {
       // transporte, e sim porque a autenticação do ciphertext falha (INVALID_ARGUMENT).
       const tampered = Buffer.from(encrypted.ciphertext);
       tampered[tampered.length - 1] ^= 0x01;
+
+      const originalCiphertextHash = sha256Hex(encrypted.ciphertext);
+      const tamperedCiphertextHash = sha256Hex(tampered);
 
       try {
         await observed(
@@ -339,11 +358,21 @@ function createSecurityRouter(options) {
         );
       } catch (err) {
         if (mapError(err).error_code === "INVALID_ARGUMENT") {
-          throw new DemoError(
-            422,
-            "INVALID_ARGUMENT",
-            "adulteração detectada: o KMS recusou o ciphertext alterado (a autenticação falhou)"
-          );
+          return res.status(422).json({
+            ok: false,
+            operation: "kms_tamper",
+            keyVersion: encrypted.keyVersion,
+            ciphertextLength: encrypted.ciphertext.length,
+            ciphertextHash: {
+              algorithm: "SHA-256",
+              length: originalCiphertextHash.length,
+              original: originalCiphertextHash,
+              tampered: tamperedCiphertextHash,
+            },
+            decryption: "rejected",
+            tamperDetected: true,
+            error_code: "INVALID_ARGUMENT",
+          });
         }
         throw err;
       }
