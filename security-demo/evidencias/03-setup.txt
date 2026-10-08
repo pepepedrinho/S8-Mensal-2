@@ -1,0 +1,94 @@
+Evidência 03 — conclusão do setup (etapas 4 e 6: concessões de IAM)
+Seminário Cloud IAM, Secret Manager e Cloud KMS — Triodelícia
+
+Gerado em: 2026-10-08 14:57:54    
+Comando:   bash security-demo/01-setup.sh   (sem --sem-iam)
+Conta:     lipe31102005@gmail.com (roles/owner no projeto)
+
+Etapas 1, 2, 3 e 5 já tinham sido executadas antes, com a conta em roles/editor
+e o script em modo --sem-iam. Esta execução conclui as etapas 4 e 6, que concedem
+as roles da SA do backend NO SECRET e NA CHAVE (nunca no projeto).
+==============================================================================
+
+
+== 0. Contexto ==
+  Projeto: triodelicia-mensal2-2026 | Região: southamerica-east1
+  SA do backend (triodelicia-backend): triodelicia-backend@triodelicia-mensal2-2026.iam.gserviceaccount.com
+
+== 1. APIs do Secret Manager e do Cloud KMS ==
+  [ok] secretmanager.googleapis.com já habilitada — nada a fazer.
+  [ok] cloudkms.googleapis.com já habilitada — nada a fazer.
+
+== 2. Secret APP_API_KEY (replicação user-managed em southamerica-east1) ==
+  [ok] o secret já existe com replicação user-managed em southamerica-east1 — nada a fazer.
+
+== 3. Versão do secret (valor aleatório, nunca exibido) ==
+  [ok] o secret já tem 1 versão(ões) ativa(s); para rotacionar, adicione outra versão de propósito — nada a fazer.
+
+== 4. roles/secretmanager.secretAccessor para a SA do backend SOMENTE no secret ==
+
+  Comando:
+    gcloud secrets add-iam-policy-binding APP_API_KEY --project=triodelicia-mensal2-2026 --member=serviceAccount:triodelicia-backend@triodelicia-mensal2-2026.iam.gserviceaccount.com --role=roles/secretmanager.secretAccessor --format=none 
+Updated IAM policy for secret [APP_API_KEY].
+
+== 5. Key ring seminario-seguranca e chave seminario-chave (encryption, rotação a cada 90 dias) ==
+  [ok] o key ring já existe — nada a fazer.
+  [ok] a chave já existe (encryption, rotação a cada 90 dias) — nada a fazer.
+
+== 6. roles/cloudkms.cryptoKeyEncrypterDecrypter para a SA do backend SOMENTE na chave ==
+
+  Comando:
+    gcloud kms keys add-iam-policy-binding seminario-chave --keyring=seminario-seguranca --location=southamerica-east1 --project=triodelicia-mensal2-2026 --member=serviceAccount:triodelicia-backend@triodelicia-mensal2-2026.iam.gserviceaccount.com --role=roles/cloudkms.cryptoKeyEncrypterDecrypter --format=none 
+Updated IAM policy for key [seminario-chave].
+
+== 7. Verificação final (00-check.sh) ==
+
+== Contexto ==
+  Projeto: triodelicia-mensal2-2026 (123993371419) | Região: southamerica-east1
+  Conta ativa no gcloud: lipe31102005@gmail.com
+
+== APIs ==
+  [ok] run.googleapis.com habilitada
+  [ok] firestore.googleapis.com habilitada
+  [ok] cloudbuild.googleapis.com habilitada
+  [ok] secretmanager.googleapis.com habilitada
+  [ok] cloudkms.googleapis.com habilitada
+
+== Service account do backend (triodelicia-backend) ==
+  triodelicia-backend@triodelicia-mensal2-2026.iam.gserviceaccount.com
+  [ok] SA dedicada (não é a conta padrão do Compute)
+
+== Service accounts de todos os serviços Cloud Run ==
+  triodelicia-backend -> triodelicia-backend@triodelicia-mensal2-2026.iam.gserviceaccount.com
+  triodelicia-frontend-sae1 -> triodelicia-frontend@triodelicia-mensal2-2026.iam.gserviceaccount.com
+  triodelicia-frontend-saw1 -> triodelicia-frontend@triodelicia-mensal2-2026.iam.gserviceaccount.com
+
+== Variáveis de ambiente do triodelicia-backend (só nomes, nunca valores) ==
+    FIRESTORE_DB_UID
+    FIRESTORE_DB_LOCATION
+    FIRESTORE_DB_ID
+    GOOGLE_CLOUD_PROJECT
+  [ok] MONGO_URI não está definida (backend usa Firestore via OIDC)
+
+== Roles da SA do backend no PROJETO (herdadas por todo secret e chave do projeto) ==
+  Obs.: só a política do projeto; herança de pasta/organização não é verificada aqui.
+  - roles/datastore.user
+  [ok] roles/datastore.user não dá acesso a secretmanager.* nem cloudkms.*
+
+== Secret APP_API_KEY ==
+  Replicação: southamerica-east1
+  Política IAM do secret:
+    roles/secretmanager.secretAccessor	serviceAccount:triodelicia-backend@triodelicia-mensal2-2026.iam.gserviceaccount.com
+  [ok] SA do backend tem secretAccessor NO SECRET
+  Versões (número, estado, criação — nunca o valor):
+    VERSAO  ESTADO   CRIADA_EM
+    1       enabled  2026-10-08 17:30
+
+== Chave KMS seminario-seguranca/seminario-chave (southamerica-east1) ==
+  Purpose: ENCRYPT_DECRYPT | Rotação: 90 dias | Próxima: 2027-01-06T17:30:22Z | Versão primária: ENABLED
+  Política IAM da chave:
+    roles/cloudkms.cryptoKeyEncrypterDecrypter	serviceAccount:triodelicia-backend@triodelicia-mensal2-2026.iam.gserviceaccount.com
+  [ok] SA do backend tem cryptoKeyEncrypterDecrypter NA CHAVE
+
+== Resumo ==
+  [ok] nenhum alerta.
