@@ -10,13 +10,53 @@
 # O valor do secret é gerado e enviado por pipe direto ao gcloud: nunca é exibido,
 # salvo em variável ou gravado em arquivo.
 #
-# Uso (Git Bash): bash security-demo/01-setup.sh
+# Uso (Git Bash):
+#   bash security-demo/01-setup.sh
+#   bash security-demo/01-setup.sh --sem-iam
+#
+# --sem-iam pula as etapas 4 e 6, que concedem as roles NO SECRET e NA CHAVE. Serve
+# para quem cria os recursos mas não tem setIamPolicy neles (roles/editor, por
+# exemplo, cria secret e chave mas não altera a política de nenhum dos dois). As
+# etapas 4 e 6 ficam listadas como pendentes no fim; quem tiver permissão as executa
+# depois — veja security-demo/para-o-owner.md.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+uso() {
+  cat <<'FIM_USO'
+Uso: bash security-demo/01-setup.sh [--sem-iam]
+
+  (sem opção)  monta tudo: APIs, secret, primeira versão, key ring, chave e as
+               roles da SA do backend no secret e na chave.
+  --sem-iam    pula as etapas 4 e 6 (as concessões de IAM no secret e na chave) e
+               lista no fim o que ficou pendente. Para quem cria os recursos mas
+               não tem setIamPolicy neles.
+  -h, --help   esta mensagem.
+FIM_USO
+}
+
+# O parse vem antes de carregar o config.sh: ele consulta o GCP, e --help/opção
+# inválida não devem depender de rede nem de credencial.
+SEM_IAM=0
+for arg in "$@"; do
+  case "$arg" in
+    --sem-iam) SEM_IAM=1 ;;
+    -h|--help) uso; exit 0 ;;
+    *)
+      echo "Opção desconhecida: $arg" >&2
+      echo >&2
+      uso >&2
+      exit 2 ;;
+  esac
+done
+
 # shellcheck source=config.sh
 source "$SCRIPT_DIR/config.sh"
+
+# Etapas de IAM que o --sem-iam deixou para trás (texto exibido no fim).
+PENDENTES=()
 
 if [ -t 1 ]; then
   VERMELHO=$'\033[1;31m'; NEGRITO=$'\033[1m'; RESET=$'\033[0m'
@@ -32,6 +72,7 @@ MEMBRO="serviceAccount:$BACKEND_SA"
 etapa()  { printf '\n%s== %s ==%s\n' "$NEGRITO" "$1" "$RESET"; }
 ja_ok()  { printf '  [ok] %s — nada a fazer.\n' "$1"; }
 alerta() { printf '  %s[ALERTA] %s%s\n' "$VERMELHO" "$1" "$RESET"; }
+pulado() { printf '  [--sem-iam] etapa pulada: %s\n' "$1"; PENDENTES+=("$2"); }
 
 # gcloud sem o \r do Windows.
 gc() { gcloud "$@" | tr -d '\r'; }
@@ -121,6 +162,12 @@ POL_SECRET="$(gc secrets get-iam-policy "$SECRET_NAME" --project="$PROJECT_ID" \
   --flatten='bindings[].members' --format='value(bindings.role,bindings.members)')"
 if politica_tem "$POL_SECRET" "$ROLE_SECRET" "$MEMBRO"; then
   ja_ok "a SA do backend já tem $ROLE_SECRET no secret"
+elif [ "$SEM_IAM" -eq 1 ]; then
+  # Ler a política é permitido a quem não pode alterá-la, então a checagem acima roda
+  # sempre: com --sem-iam só se pula a escrita, e nada é marcado como pendente à toa.
+  pulado "$ROLE_SECRET para a SA do backend no secret $SECRET_NAME" \
+    "$(printf 'gcloud secrets add-iam-policy-binding %s --project=%s \\\n    --member="%s" --role="%s"' \
+       "$SECRET_NAME" "$PROJECT_ID" "$MEMBRO" "$ROLE_SECRET")"
 else
   rodar gcloud secrets add-iam-policy-binding "$SECRET_NAME" --project="$PROJECT_ID" \
     --member="$MEMBRO" --role="$ROLE_SECRET" --format=none
@@ -167,6 +214,10 @@ POL_CHAVE="$(gc kms keys get-iam-policy "$KEY" --keyring="$KEYRING" --location="
   --project="$PROJECT_ID" --flatten='bindings[].members' --format='value(bindings.role,bindings.members)')"
 if politica_tem "$POL_CHAVE" "$ROLE_CHAVE" "$MEMBRO"; then
   ja_ok "a SA do backend já tem $ROLE_CHAVE na chave"
+elif [ "$SEM_IAM" -eq 1 ]; then
+  pulado "$ROLE_CHAVE para a SA do backend na chave $KEY" \
+    "$(printf 'gcloud kms keys add-iam-policy-binding %s --keyring=%s --location=%s \\\n    --project=%s --member="%s" --role="%s"' \
+       "$KEY" "$KEYRING" "$REGION" "$PROJECT_ID" "$MEMBRO" "$ROLE_CHAVE")"
 else
   rodar gcloud kms keys add-iam-policy-binding "$KEY" --keyring="$KEYRING" --location="$REGION" \
     --project="$PROJECT_ID" --member="$MEMBRO" --role="$ROLE_CHAVE" --format=none
@@ -175,3 +226,19 @@ fi
 # ---------------------------------------------------------------------------------------
 etapa "7. Verificação final (00-check.sh)"
 bash "$SCRIPT_DIR/00-check.sh"
+
+# ---------------------------------------------------------------------------------------
+if [ "${#PENDENTES[@]}" -gt 0 ]; then
+  etapa "PENDENTE: ${#PENDENTES[@]} concessão(ões) de IAM não executada(s) (--sem-iam)"
+  alerta "Os recursos existem, mas a SA do backend AINDA NÃO TEM acesso a eles."
+  alerta "Enquanto isso não for feito, /api/security responde 403 e os cenários S1 e S5"
+  alerta "não têm o que remover (o 00-check.sh acima mostra os avisos correspondentes)."
+  echo
+  echo "  Quem tiver setIamPolicy nos recursos precisa rodar:"
+  for cmd in "${PENDENTES[@]}"; do
+    printf '\n    %s\n' "$cmd"
+  done
+  echo
+  echo "  Os comandos prontos para colar, com explicação, estão em:"
+  echo "    security-demo/para-o-owner.md"
+fi

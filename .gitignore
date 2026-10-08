@@ -4,3 +4,6 @@ data
 !.env.example
 
 .env.obs
+
+# Certificados locais montados pelo security-demo/ca-bundle.sh (máquina específica)
+security-demo/.local/

@@ -150,8 +150,11 @@ else
   echo "  Replicação: ${LOCAIS:-automática (global)}"
 
   echo "  Política IAM do secret:"
+  # Política sem nenhum binding devolve uma linha só com o separador (um tab), e não
+  # string vazia: sem o sed, o teste -z abaixo falha e a tela mostra um tab solto.
   POL_SECRET="$(gc secrets get-iam-policy "$SECRET_NAME" --project="$PROJECT_ID" \
-    --flatten='bindings[].members' --format='value(bindings.role,bindings.members)')"
+    --flatten='bindings[].members' --format='value(bindings.role,bindings.members)' \
+    | sed '/^[[:space:]]*$/d')"
   if [ -z "$POL_SECRET" ]; then echo "    (vazia)"; else recuo <<< "$POL_SECRET"; fi
   if grep -qxF "roles/secretmanager.secretAccessor"$'\t'"serviceAccount:$BACKEND_SA" <<< "$POL_SECRET"; then
     ok "SA do backend tem secretAccessor NO SECRET"
@@ -184,7 +187,8 @@ else
 
   echo "  Política IAM da chave:"
   POL_CHAVE="$(gc kms keys get-iam-policy "$KEY" --keyring="$KEYRING" --location="$REGION" \
-    --project="$PROJECT_ID" --flatten='bindings[].members' --format='value(bindings.role,bindings.members)')"
+    --project="$PROJECT_ID" --flatten='bindings[].members' \
+    --format='value(bindings.role,bindings.members)' | sed '/^[[:space:]]*$/d')"
   if [ -z "$POL_CHAVE" ]; then echo "    (vazia)"; else recuo <<< "$POL_CHAVE"; fi
   if grep -qxF "roles/cloudkms.cryptoKeyEncrypterDecrypter"$'\t'"serviceAccount:$BACKEND_SA" <<< "$POL_CHAVE"; then
     ok "SA do backend tem cryptoKeyEncrypterDecrypter NA CHAVE"
